@@ -165,6 +165,13 @@ func ScanHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+	// Handle command line arguments
+	staticPath := "."
+	if len(os.Args[1:]) != 0 {
+		staticPath = os.Args[1]
+	}
+
+	// Start web server
 	router := mux.NewRouter().StrictSlash(true)
 	router.HandleFunc("/", IndexHandler)
 	router.HandleFunc("/scan", ScanHandler).Methods("POST")
@@ -174,7 +181,7 @@ func main() {
 			path = path + "index.html"
 		}
 
-		http.ServeFile(w, r, path)
+		http.ServeFile(w, r, staticPath+path)
 	})
 	http.Handle("/", router)
 
