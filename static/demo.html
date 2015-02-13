@@ -1,0 +1,94 @@
+<html>
+<head>
+  <title>Screenshop OCR Test</title>
+  <link rel="stylesheet" type="text/css" href="//maxcdn.bootstrapcdn.com/bootstrap/3.3.2/css/bootstrap.min.css">
+  <style type="text/css">
+    #result ul {
+      margin: 10px 0px;
+      border: 1px solid #eee;
+      border-radius: 5px;
+    }
+
+    #result ul li {
+      padding: 5px;
+    }
+
+    #result ul :nth-child(odd){
+      background-color: #eee;
+    }
+
+    #result ul :nth-child(even){
+      background-color: #fff;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Screenshop OCR Test</h1>
+
+    <div class="row">
+      <div class="col-xs-3">
+        <form class="form" name="fileinfo">
+          <label>Select a Screenshot:</label>
+          <input type="file" name="file" />
+          <br />
+          <input type="submit" class="btn btn-success" value="Upload!">
+        </form>
+      </div>
+
+      <div class="col-xs-6">
+        <strong>Incoming Text Lines:</strong>
+        <div id="result"></div>
+      </div>
+    </div>
+
+    <script type="text/javascript">
+    var form = document.forms.namedItem("fileinfo");
+    form.addEventListener('submit', function(ev) {
+      var resultDiv = document.getElementById("result");
+
+      if(resultDiv.firstChild) {
+        resultDiv.removeChild(resultDiv.firstChild);
+      }
+
+      var
+        oOutput = document.getElementById("output"),
+        oData = new FormData(document.forms.namedItem("fileinfo"));
+
+      var oReq = new XMLHttpRequest();
+      oReq.open("POST", "/scan", true);
+      oReq.onload = function(oEvent) {
+        if (oReq.status == 200) {
+          var resp = JSON.parse(oReq.response);
+
+          if(resp.Error) {
+            var errorDiv = document.createElement("div");
+            errorDiv.className = "alert alert-danger";
+            errorDiv.appendChild(document.createTextNode(resp.ErrorMsg));
+            resultDiv.appendChild(errorDiv);
+          } else {
+            var lineUl = document.createElement("ul");
+            lineUl.className = "list-unstyled";
+
+            for(var x in resp.Lines) {
+              if(resp.Lines[x] !== '') {
+                var lineLi = document.createElement("li");
+                lineLi.appendChild(document.createTextNode(resp.Lines[x]));
+                lineUl.appendChild(lineLi);
+              }
+            }
+
+            resultDiv.appendChild(lineUl);
+          }
+        } else {
+          oOutput.innerHTML = "Error " + oReq.status + " occurred uploading your file.<br \/>";
+        }
+      };
+
+      oReq.send(oData);
+      ev.preventDefault();
+    }, false);
+    </script>
+  </div>
+</body>
+</html>
