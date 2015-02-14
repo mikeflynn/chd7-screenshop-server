@@ -58,7 +58,10 @@ func isMessages(filename string) bool {
 }
 
 func trimImage(filename string) bool {
-	cmd := exec.Command("/usr/local/bin/convert", filename, "-crop", "+0+200", "-crop", "-200+-50", "+repage", filename)
+	cmd := exec.Command("/usr/local/bin/convert", filename,
+		"-crop", "+0+200", "-crop", "-200+-50", "+repage",
+		"-channel", "rgba", "-alpha", "set", "-fuzz", "40%", "-fill", "white", "-opaque", "#1D62F0",
+		filename)
 	err := cmd.Start()
 	if err != nil {
 		panic(err)
@@ -166,7 +169,7 @@ func ScanHandler(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 	// Handle command line arguments
-	staticPath := "."
+	staticPath := "./"
 	if len(os.Args[1:]) != 0 {
 		staticPath = os.Args[1]
 	}
