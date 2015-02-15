@@ -11,8 +11,18 @@
 
     #result ul li {
       padding: 5px;
+      background-color: red;
+      border-bottom: 1px solid #ccc;
     }
 
+    #result ul li.incoming {
+      background-color: #eee;
+    }
+    #result ul li.outgoing {
+      background-color: #98AFC7;
+      text-align: right;
+    }
+    /*
     #result ul :nth-child(odd){
       background-color: #eee;
     }
@@ -20,6 +30,7 @@
     #result ul :nth-child(even){
       background-color: #fff;
     }
+    */
   </style>
 </head>
 <body>
@@ -37,7 +48,7 @@
       </div>
 
       <div class="col-md-6">
-        <strong>Incoming Text Lines:</strong>
+        <strong>Text Lines:</strong>
         <div id="result"></div>
       </div>
     </div>
@@ -60,7 +71,7 @@
       oReq.onload = function(oEvent) {
         if (oReq.status == 200) {
           var resp = JSON.parse(oReq.response);
-
+          console.log(resp);
           if(resp.Error) {
             var errorDiv = document.createElement("div");
             errorDiv.className = "alert alert-danger";
@@ -71,9 +82,10 @@
             lineUl.className = "list-unstyled";
 
             for(var x in resp.Lines) {
-              if(resp.Lines[x] !== '') {
+              if(resp.Lines[x]) {
                 var lineLi = document.createElement("li");
-                lineLi.appendChild(document.createTextNode(resp.Lines[x]));
+                lineLi.className = resp.Lines[x].type;
+                lineLi.appendChild(document.createTextNode(resp.Lines[x].text));
                 lineUl.appendChild(lineLi);
               }
             }
