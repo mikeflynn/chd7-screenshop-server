@@ -144,6 +144,7 @@ func ErrorResp(w http.ResponseWriter, msg string) {
 }
 
 func ScanHandler(w http.ResponseWriter, r *http.Request) {
+	// Upload file
 	file, header, err := r.FormFile("file")
 
 	if err != nil {
@@ -169,57 +170,64 @@ func ScanHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Verify Image
 	if isMessages(tmpFilename) == false {
 		ErrorResp(w, "Not a text message screenshot.")
 		return
 	}
 
-	// Prep and OCR full image
-	trimmedFile, hasError := convertImage(tmpFilename, "all")
-	if hasError {
-		ErrorResp(w, "Failed to trim image.")
-		return
+	// Kick off Image Processing
+
+	type ChanMsg struct {
+		HasError bool
+		Type     string
+		Message  []string
 	}
 
-	allLines := tesseract(trimmedFile, "\n")
+	textChannel := make(chan ChanMsg)
+	processingJobs := []string{"all", "in", "out"}
 
-	// Prep and OCR incoming
-	incomingFile, hasError := convertImage(tmpFilename, "in")
-	if hasError {
-		ErrorResp(w, "Image optimization failed (in).")
-		return
+	for _, key := range processingJobs {
+		go func(textType string) {
+			filename, hasError := convertImage(tmpFilename, textType)
+			if hasError {
+				ErrorResp(w, "Failed to convert image.")
+				return
+			}
+			lines := tesseract(filename, "\n")
+			textChannel <- ChanMsg{HasError: hasError, Type: textType, Message: lines}
+		}(key)
 	}
 
-	inLines := tesseract(incomingFile, "\n")
+	// Wait for processing to finish
 
-	// Prep and OCR outgoing
-	outgoingFile, hasError := convertImage(tmpFilename, "out")
-	if hasError {
-		ErrorResp(w, "Image optimization failed (out).")
-		return
+	processedText := make(map[string][]string, 3)
+	for n := 0; n < len(processingJobs); n++ {
+		data := <-textChannel
+		processedText[data.Type] = data.Message
 	}
 
-	outLines := tesseract(outgoingFile, "\n")
+	// Merge the lists to get the full annotated conversation
 
-	returnLines := make([]map[string]string, len(allLines))
+	returnLines := make([]map[string]string, len(processedText["all"]))
 
-	for i := range allLines {
-		if strings.TrimSpace(allLines[i]) == "" {
+	for i := range processedText["all"] {
+		if strings.TrimSpace(processedText["all"][i]) == "" {
 			continue
 		}
 
 		lineType := "unknown"
 
-		for k := range inLines {
-			if strings.TrimSpace(inLines[k]) == strings.TrimSpace(allLines[i]) {
+		for k := range processedText["in"] {
+			if strings.TrimSpace(processedText["in"][k]) == strings.TrimSpace(processedText["all"][i]) {
 				lineType = "incoming"
 				break
 			}
 		}
 
 		if lineType == "unknown" {
-			for k := range outLines {
-				if strings.TrimSpace(outLines[k]) == strings.TrimSpace(allLines[i]) {
+			for k := range processedText["out"] {
+				if strings.TrimSpace(processedText["out"][k]) == strings.TrimSpace(processedText["all"][i]) {
 					lineType = "outgoing"
 					break
 				}
@@ -228,7 +236,7 @@ func ScanHandler(w http.ResponseWriter, r *http.Request) {
 
 		returnLines[i] = map[string]string{
 			"type": lineType,
-			"text": allLines[i],
+			"text": processedText["all"][i],
 		}
 	}
 
